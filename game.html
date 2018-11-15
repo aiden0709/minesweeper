@@ -1,0 +1,233 @@
+<html>
+<head>
+  <title>Minesweeper</title>
+<script type="text/javascript" src="http://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src='https://code.responsivevoice.org/responsivevoice.js'></script>
+</head>
+
+<body onkeypress="keypress(event);">
+<!-- Latest compiled and minified CSS -->
+<!--<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+-->
+
+<center>
+  <h1>Welcome to minesweeper</h1>
+
+<table>
+  <tr> <td> rows </td><td> <input id = "nrow" value = "12">  </input> </td>  </tr>
+
+  <tr> <td> coll </td><td> <input id = "ncol" value = "12">  </input> </td>  </tr>
+
+  <tr> <td> probability </td><td> <input id = "nprobability" value = ".2">  </input> </td>  </tr>
+
+  <tr> <td span = "2" > <button onclick="update_size_btn()"> Restart </button> <td>  <tR>
+ </table>
+
+<table style="border-spacing:10px `15px;" class="" id="board" />
+
+</center>
+<script>
+
+//Create a random array of mines with nrows and ncolumns
+function rnd_bin_array(nrows, ncols) {
+  var rval = [];
+  for(var row=0; row < nrows; row++) {
+    var r = [];
+    for(var col=0; col < ncols; col++) {
+      r.push(Math.round(Math.random() < PROBABILITY_BOMB));
+    }
+    rval.push(r);
+  }
+  return rval;
+}
+
+//The state array (0=not guessed, 1=guessed, 2 = flagged)
+function array_of_zeroes(nrows, ncols) {
+  var rval = [];
+  for(var row=0; row < nrows; row++) {
+    var r = [];
+    for(var col=0; col < ncols; col++) {
+      r.push(0);
+    }
+    rval.push(r);
+  }
+  return rval;
+}
+
+function keypress(event) {
+  switch (event.key) {
+    case 'a':
+      console.log("Move left");
+      CURRENT_COL -= 1;
+      if (CURRENT_COL < 0) {
+        CURRENT_COL = NUMB_COLS-1;
+      }
+      break;
+    case 'w':
+      console.log("Move up");
+      CURRENT_ROW -= 1;
+      if (CURRENT_ROW < 0) {
+        CURRENT_ROW = NUMB_ROWS-1;
+      }
+      break;
+    case 'd':
+      console.log("Move right");
+      CURRENT_COL+=1;
+      if (CURRENT_COL >= NUMB_COLS) {
+        CURRENT_COL=0;
+      }
+      break;
+    case 's':
+      console.log("Move down");
+      CURRENT_ROW += 1;
+      if (CURRENT_ROW >= NUMB_ROWS) {
+        CURRENT_ROW = 0;
+      }
+      break;
+    case 'l':
+      //We are pressing enter, change MINE_STATES
+      if (MINE_STATES[CURRENT_ROW][CURRENT_COL] == 2) {
+        //we are flagged, do nothing
+          responsiveVoice.speak("Stupid. it's already Flagged");
+        alert("Cannot open flagged, unflag first by pressing 'f'");
+        return;
+      } else if (MINE_LOCS[CURRENT_ROW][CURRENT_COL]) {
+        // We hit a bomb, give up
+        return bombHit();
+      }
+      //MINE_STATES[CURRENT_ROW][CURRENT_COL] = 1;
+      expose_cell(CURRENT_ROW, CURRENT_COL)
+      console.log(event.keyCode);
+      break;
+    case 'f':
+      //Pressed space, should either flag, or unflag
+      console.log("Space pressed");
+
+      if (MINE_STATES[CURRENT_ROW][CURRENT_COL] == 2) {
+        //We are currently flagged, unflag it
+        MINE_STATES[CURRENT_ROW][CURRENT_COL] = 0;
+
+      } else if (MINE_STATES[CURRENT_ROW][CURRENT_COL] == 1) {
+        // We already guessed this one, do nothing
+      } else {
+        //We weren't flagged, flag it
+        MINE_STATES[CURRENT_ROW][CURRENT_COL] = 2;
+      }
+      break;
+    default:
+      return;
+  }
+  update_table();
+  console.log("Key="+event.key);
+}
+
+function expose_cell(row, col) {
+  if ((row < 0) || (row >= NUMB_ROWS)) {
+    return;
+  }
+  if ((col < 0) || (col >= NUMB_COLS)) {
+    return;
+  }
+
+  if (MINE_STATES[row][col] == 1 ) {
+    return;
+  }
+  MINE_STATES[row][col]=1;
+  bc = getBombCount(row, col);
+  if (bc == 0) {
+   expose_cell (row-1, col-1);
+   expose_cell (row-1, col);
+   expose_cell (row-1, col+1);
+   expose_cell (row, col-1);
+   expose_cell (row, col+1);
+   expose_cell (row+1, col-1);
+   expose_cell (row+1, col);
+   expose_cell (row+1, col+1);
+  }
+}
+
+function bombHit() {
+  responsiveVoice.speak("Game. Over");
+  alert("Boom!  Restarting game");
+  CURRENT_ROW=0;
+  CURRENT_COL=0;
+  MINE_LOCS = rnd_bin_array(NUMB_ROWS, NUMB_COLS);
+  MINE_STATES = array_of_zeroes(NUMB_ROWS, NUMB_COLS);
+  update_table();
+}
+
+function update_size_btn() {
+  console.log("I am updating size from button press!");
+  update_size();
+}
+
+function update_size() {
+  NUMB_COLS = $('#ncol').val();
+  NUMB_ROWS = $('#nrow').val();
+  PROBABILITY_BOMB = $('#nprobability').val();
+  CURRENT_ROW=0;
+  CURRENT_COL=0;
+  MINE_LOCS = rnd_bin_array(NUMB_ROWS, NUMB_COLS);
+  MINE_STATES = array_of_zeroes(NUMB_ROWS, NUMB_COLS);
+  console.log("I am updating size!");
+  update_table();
+}
+
+PROBABILITY_BOMB = 0.2;
+NUMB_ROWS = 12;
+NUMB_COLS = 12;
+CURRENT_ROW=0;
+CURRENT_COL=0;
+MINE_LOCS = rnd_bin_array(NUMB_ROWS, NUMB_COLS);
+MINE_STATES = array_of_zeroes(NUMB_ROWS, NUMB_COLS);
+console.log(MINE_LOCS);
+
+function getBombCount(row, col) {
+  var rval = 0;
+  for(var tr=row-1; tr <= row+1; tr++) {
+    for(var tc=col-1; tc <= col+1; tc++) {
+      if ((tr==row) && (tc==col)) {
+        //We are are the row/col we are looking at, ignore
+      } else if ((tr < 0) || (tc < 0) || (tr >= NUMB_ROWS)
+          || (tc >= NUMB_COLS)) {
+            //Outside, do nothing
+      } else if (MINE_LOCS[tr][tc]) {
+        rval += 1;
+      }
+    }
+  }
+  return rval;
+}
+
+function update_table() {
+  var tbl = document.getElementById("board");
+  tbl.innerHTML="";
+  for(var row=0; row < NUMB_ROWS; row++) {
+    var r = tbl.insertRow(row);
+    for(var col=0; col < NUMB_COLS; col++) {
+      var cell = r.insertCell(col);
+      //console.log(row+" "+cWITH JUST ONol);
+      switch (MINE_STATES[row][col]) {
+        case 0: //This means we haven't guessed
+          cell.innerHTML = "<img src=\"Blue.png\" width=25 height=25\>";
+          break;
+        case 1: //This means we have guessed
+          //cell.innerHTML=getBombCount(row, col);
+          cell.innerHTML= "<div style=\"min-width:25; min-height:25;\"> "+getBombCount(row, col)+"</div>";
+          break;
+        case 2: //This means we have flagged it
+          cell.innerHTML = "<img src=\"purple-flag.svg\" width=10 height=15/>";
+          break;
+      }
+      //console.log(row+" "+col);
+      if ((row == CURRENT_ROW) && (col==CURRENT_COL)) {
+        cell.style.backgroundColor = "red";
+      }
+    }
+  }
+
+}
+update_table();
+</script>
+</body>
+</html>
